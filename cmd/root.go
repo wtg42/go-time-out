@@ -23,6 +23,8 @@ import (
 	"time"
 
 	"github.com/spf13/cobra"
+	"github.com/vbauerster/mpb/v6"
+	"github.com/vbauerster/mpb/v6/decor"
 
 	homedir "github.com/mitchellh/go-homedir"
 	"github.com/spf13/viper"
@@ -35,8 +37,9 @@ var worktime string
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
 	Use:   "time-out",
-	Short: "超時工作提醒",
-	Long:  `提醒你該站起來尿尿了。`,
+	Short: "Take a break",
+	Long: `Remind you pendding current job and take a break.
+	use time-out command to set working time and break time`,
 	// Uncomment the following line if your bare application
 	// has an action associated with it:
 	Run: func(cmd *cobra.Command, args []string) {
@@ -49,15 +52,40 @@ var rootCmd = &cobra.Command{
 		scanner.Scan()
 		worktime = scanner.Text()
 		seconds, _ := strconv.Atoi(breaktime)
-		// fmt.Println(time.Duration(seconds) * time.Second)
-		timer := time.NewTimer(time.Duration(seconds) * time.Second)
 
+		timer := time.NewTicker(time.Second * 1)
+
+		// initialize progress container, with custom width
+		p := mpb.New(
+			mpb.WithWidth(60),
+			mpb.WithRefreshRate(10*time.Millisecond),
+		)
+		total := seconds
+		name := "Working time:"
+		// frames := []string{"/", "\\"}
+		// adding a single bar, which will inherit container's width
+		bar := p.Add(int64(total),
+			// progress bar filler with customized style
+			mpb.NewBarFiller("[=>-]"),
+			mpb.PrependDecorators(
+				// display our name with one space on the right
+				decor.Name(name, decor.WC{W: len(name) + 10, C: decor.DidentRight}),
+				// replace ETA decorator with "done" message, OnComplete event
+				decor.OnComplete(
+					decor.Counters(0, "% d / % d"), "done",
+				),
+			),
+			mpb.AppendDecorators(decor.Spinner(nil)),
+		)
+		// start := time.Now()
 		for {
 			<-timer.C
-			fmt.Printf("do loading bar for %d seconds...", seconds)
-			fmt.Println()
-			break
+			bar.Increment()
+			if bar.Completed() {
+				break
+			}
 		}
+		p.Wait()
 	},
 }
 
