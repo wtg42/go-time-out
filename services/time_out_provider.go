@@ -13,6 +13,7 @@ type TimeoutProvider struct {
 	TotalTime int
 	progress  *mpb.Progress
 	bar       *mpb.Bar
+	d         *time.Ticker
 }
 
 func (bp *TimeoutProvider) NewProvider() {
@@ -55,4 +56,15 @@ func (bp *TimeoutProvider) Completed() bool {
 
 func (bp *TimeoutProvider) WaitProgress() {
 	bp.progress.Wait()
+}
+
+func (bp *TimeoutProvider) StartTicker() {
+	bp.d = time.NewTicker(time.Second * 1)
+	for {
+		<-bp.d.C
+		bp.Incr()
+		if bp.Completed() {
+			break
+		}
+	}
 }

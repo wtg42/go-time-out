@@ -20,7 +20,6 @@ import (
 	"fmt"
 	"os"
 	"strconv"
-	"time"
 
 	"github.com/spf13/cobra"
 
@@ -55,38 +54,24 @@ var rootCmd = &cobra.Command{
 		workSeconds, _ := strconv.Atoi(worktime)
 		breakSeconds, _ := strconv.Atoi(breaktime)
 
-		// 工作的進度條
-		workTimer := time.NewTicker(time.Second * 1)
-
+		// 創建工作進度條
 		worktimeProvider := services.TimeoutProvider{
 			Name:      "Working time:",
 			TotalTime: workSeconds,
 		}
 		worktimeProvider.NewProvider()
-
-		for {
-			<-workTimer.C
-			worktimeProvider.Incr()
-			if worktimeProvider.Completed() {
-				break
-			}
-		}
+		// 定時器
+		worktimeProvider.StartTicker()
 		worktimeProvider.WaitProgress()
 
-		// 休息的進度條
+		// 創建休息進度條
 		breaktimeProvider := services.TimeoutProvider{
 			Name:      "break time:",
 			TotalTime: breakSeconds,
 		}
 		breaktimeProvider.NewProvider()
-		breakTimer := time.NewTicker(time.Second * 1)
-		for {
-			<-breakTimer.C
-			breaktimeProvider.Incr()
-			if breaktimeProvider.Completed() {
-				break
-			}
-		}
+		// 定時器
+		breaktimeProvider.StartTicker()
 		breaktimeProvider.WaitProgress()
 	},
 }
