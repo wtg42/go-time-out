@@ -23,8 +23,8 @@ import (
 	"time"
 
 	"github.com/spf13/cobra"
-	"github.com/vbauerster/mpb/v6"
-	"github.com/vbauerster/mpb/v6/decor"
+
+	"go-time-out/services"
 
 	homedir "github.com/mitchellh/go-homedir"
 	"github.com/spf13/viper"
@@ -51,41 +51,43 @@ var rootCmd = &cobra.Command{
 		fmt.Print("Every?(minutes): ")
 		scanner.Scan()
 		worktime = scanner.Text()
-		seconds, _ := strconv.Atoi(breaktime)
 
-		timer := time.NewTicker(time.Second * 1)
+		workSeconds, _ := strconv.Atoi(worktime)
+		breakSeconds, _ := strconv.Atoi(breaktime)
 
-		// initialize progress container, with custom width
-		p := mpb.New(
-			mpb.WithWidth(60),
-			mpb.WithRefreshRate(10*time.Millisecond),
-		)
-		total := seconds
-		name := "Working time:"
-		// frames := []string{"/", "\\"}
-		// adding a single bar, which will inherit container's width
-		bar := p.Add(int64(total),
-			// progress bar filler with customized style
-			mpb.NewBarFiller("[=>-]"),
-			mpb.PrependDecorators(
-				// display our name with one space on the right
-				decor.Name(name, decor.WC{W: len(name) + 10, C: decor.DidentRight}),
-				// replace ETA decorator with "done" message, OnComplete event
-				decor.OnComplete(
-					decor.Counters(0, "% d / % d"), "done",
-				),
-			),
-			mpb.AppendDecorators(decor.Spinner(nil)),
-		)
-		// start := time.Now()
+		// 工作的進度條
+		workTimer := time.NewTicker(time.Second * 1)
+
+		worktimeProvider := services.TimeoutProvider{
+			Name:      "Working time:",
+			TotalTime: workSeconds,
+		}
+		worktimeProvider.NewProvider()
+
 		for {
-			<-timer.C
-			bar.Increment()
-			if bar.Completed() {
+			<-workTimer.C
+			worktimeProvider.Incr()
+			if worktimeProvider.Completed() {
 				break
 			}
 		}
-		p.Wait()
+		worktimeProvider.WaitProgress()
+
+		// 休息的進度條
+		breaktimeProvider := services.TimeoutProvider{
+			Name:      "break time:",
+			TotalTime: breakSeconds,
+		}
+		breaktimeProvider.NewProvider()
+		breakTimer := time.NewTicker(time.Second * 1)
+		for {
+			<-breakTimer.C
+			breaktimeProvider.Incr()
+			if breaktimeProvider.Completed() {
+				break
+			}
+		}
+		breaktimeProvider.WaitProgress()
 	},
 }
 
